@@ -1,0 +1,1208 @@
+import React, { useState, useEffect, useRef } from "react";
+
+/* ---------------- tokens ---------------- */
+const K = {
+  bg: "#0B0B0C",
+  card: "#141416",
+  card2: "#1C1C1F",
+  line: "#2B2B2F",
+  text: "#F2F2F3",
+  mute: "#8A8A8E",
+  faint: "#5C5C61",
+  on: "#FFFFFF",
+};
+const FONT =
+  '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+const uid = () => Math.random().toString(36).slice(2, 8);
+
+/* ---------------- exercise library (barbell, dumbbell, cable, bodyweight only) --------- */
+const GROUPS = [
+  "Lats",
+  "Back",
+  "Rear Delts",
+  "Shoulders",
+  "Chest",
+  "Arms",
+  "Quads",
+  "Hamstrings",
+  "Glutes",
+  "Calves",
+  "Core",
+  "Conditioning",
+];
+
+const LIB = [
+  ["Pull-up", "Lats"],
+  ["Chin-up", "Lats"],
+  ["Assisted Pull-up", "Lats"],
+  ["Lat Pulldown (wide)", "Lats"],
+  ["Lat Pulldown (neutral)", "Lats"],
+  ["Straight-Arm Pulldown", "Lats"],
+  ["DB Pullover", "Lats"],
+  ["Barbell Row", "Back"],
+  ["Pendlay Row", "Back"],
+  ["One-Arm DB Row", "Back"],
+  ["Seated Cable Row", "Back"],
+  ["One-Arm Cable Row", "Back"],
+  ["Inverted Row", "Back"],
+  ["Face Pull", "Rear Delts"],
+  ["Bent-Over DB Rear-Delt Fly", "Rear Delts"],
+  ["Cable Rear-Delt Fly", "Rear Delts"],
+  ["Barbell Bench Press", "Chest"],
+  ["Incline Barbell Press", "Chest"],
+  ["Flat DB Press", "Chest"],
+  ["Incline DB Press", "Chest"],
+  ["Cable Fly", "Chest"],
+  ["Dips", "Chest"],
+  ["Push-up", "Chest"],
+  ["Overhead Barbell Press", "Shoulders"],
+  ["Seated DB Shoulder Press", "Shoulders"],
+  ["DB Lateral Raise", "Shoulders"],
+  ["Cable Lateral Raise", "Shoulders"],
+  ["Barbell Curl", "Arms"],
+  ["EZ-Bar Curl", "Arms"],
+  ["Incline DB Curl", "Arms"],
+  ["Hammer Curl", "Arms"],
+  ["Cable Curl", "Arms"],
+  ["Rope Pushdown", "Arms"],
+  ["Overhead DB Extension", "Arms"],
+  ["Close-Grip Bench Press", "Arms"],
+  ["Back Squat", "Quads"],
+  ["Front Squat", "Quads"],
+  ["Bulgarian Split Squat", "Quads"],
+  ["Walking Lunge", "Quads"],
+  ["Goblet Squat", "Quads"],
+  ["Step-up", "Quads"],
+  ["Romanian Deadlift", "Hamstrings"],
+  ["DB Romanian Deadlift", "Hamstrings"],
+  ["Conventional Deadlift", "Hamstrings"],
+  ["Nordic Curl", "Hamstrings"],
+  ["Good Morning", "Hamstrings"],
+  ["Barbell Hip Thrust", "Glutes"],
+  ["DB Swing", "Glutes"],
+  ["Standing Calf Raise", "Calves"],
+  ["Seated DB Calf Raise", "Calves"],
+  ["Hanging Leg Raise", "Core"],
+  ["Ab Wheel Rollout", "Core"],
+  ["Cable Crunch", "Core"],
+  ["Plank", "Core"],
+  ["Hollow Hold", "Core"],
+  ["Run", "Conditioning"],
+  ["Skipping Rope", "Conditioning"],
+  ["Stair Sprints", "Conditioning"],
+].map(([n, m]) => ({ n, m }));
+
+/* ---------------- default plan ---------------- */
+const mk = (n, m, sets, reps) => ({ id: uid(), n, m, sets, reps });
+const DEFAULT_PLAN = [
+  {
+    id: uid(),
+    name: "Upper A",
+    note: "Pull priority",
+    ex: [
+      mk("Pull-up", "Lats", 4, "5–8"),
+      mk("Barbell Bench Press", "Chest", 4, "6–8"),
+      mk("Barbell Row", "Back", 4, "8–10"),
+      mk("Seated DB Shoulder Press", "Shoulders", 3, "8–10"),
+      mk("Straight-Arm Pulldown", "Lats", 3, "12–15"),
+      mk("DB Lateral Raise", "Shoulders", 4, "12–15"),
+      mk("Face Pull", "Rear Delts", 3, "15–20"),
+      mk("Hanging Leg Raise", "Core", 3, "10–15"),
+    ],
+  },
+  {
+    id: uid(),
+    name: "Lower A",
+    note: "Squat and hinge",
+    ex: [
+      mk("Back Squat", "Quads", 4, "5–6"),
+      mk("Romanian Deadlift", "Hamstrings", 4, "6–8"),
+      mk("Bulgarian Split Squat", "Quads", 3, "8–10 / leg"),
+      mk("Nordic Curl", "Hamstrings", 3, "5–8"),
+      mk("Standing Calf Raise", "Calves", 4, "12–15"),
+      mk("Ab Wheel Rollout", "Core", 3, "8–12"),
+    ],
+  },
+  {
+    id: uid(),
+    name: "Conditioning",
+    note: "Easy aerobic and core",
+    ex: [
+      mk("Run", "Conditioning", 1, "3–4 km easy"),
+      mk("DB Swing", "Glutes", 4, "12–15"),
+      mk("Skipping Rope", "Conditioning", 6, "60 s on / 60 off"),
+      mk("Plank", "Core", 3, "45–60 s"),
+    ],
+  },
+  {
+    id: uid(),
+    name: "Back & Rear Delts",
+    note: "The width day",
+    ex: [
+      mk("Lat Pulldown (wide)", "Lats", 4, "8–12"),
+      mk("Seated Cable Row", "Back", 4, "8–12"),
+      mk("One-Arm DB Row", "Back", 3, "10–12"),
+      mk("Straight-Arm Pulldown", "Lats", 3, "12–15"),
+      mk("Bent-Over DB Rear-Delt Fly", "Rear Delts", 4, "15–20"),
+      mk("Face Pull", "Rear Delts", 3, "15–20"),
+      mk("EZ-Bar Curl", "Arms", 3, "8–12"),
+      mk("Rope Pushdown", "Arms", 3, "10–15"),
+    ],
+  },
+  {
+    id: uid(),
+    name: "Lower B",
+    note: "Posterior chain",
+    ex: [
+      mk("Front Squat", "Quads", 3, "6–8"),
+      mk("Barbell Hip Thrust", "Glutes", 3, "8–10"),
+      mk("Walking Lunge", "Quads", 3, "10 / leg"),
+      mk("DB Romanian Deadlift", "Hamstrings", 3, "10–12"),
+      mk("Seated DB Calf Raise", "Calves", 3, "12–15"),
+      mk("Hollow Hold", "Core", 3, "30–45 s"),
+    ],
+  },
+  {
+    id: uid(),
+    name: "Upper B",
+    note: "Width, rear delts, arms",
+    ex: [
+      mk("Chin-up", "Lats", 3, "6–10"),
+      mk("Incline DB Press", "Chest", 3, "8–10"),
+      mk("One-Arm Cable Row", "Back", 3, "10–12"),
+      mk("Cable Fly", "Chest", 3, "12–15"),
+      mk("Cable Rear-Delt Fly", "Rear Delts", 4, "12–15"),
+      mk("Cable Lateral Raise", "Shoulders", 4, "12–15"),
+      mk("Incline DB Curl", "Arms", 3, "10–12"),
+      mk("Cable Crunch", "Core", 3, "12–15"),
+    ],
+  },
+];
+
+const WARMUP = [
+  "5 min easy cardio",
+  "Band or light cable pull-aparts — 2 × 20",
+  "Dead hangs — 2 × 20 s",
+  "Hip and shoulder circles — 60 s",
+];
+const COOLDOWN = ["Lat stretch — 45 s / side", "Pec stretch — 45 s / side", "Hip flexor and hamstring — 45 s / side"];
+
+/* ---------------- helpers ---------------- */
+const num = (v) => {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
+const e1rm = (w, r) => num(w) * (1 + num(r) / 30);
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const dObj = (s) => new Date(s + "T00:00:00");
+const fmtShort = (s) => dObj(s).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const fmtLong = (s) => dObj(s).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+const between = (a, b) => Math.round((dObj(b) - dObj(a)) / 86400000);
+const durTxt = (sec) => `${Math.floor(sec / 3600)}h ${String(Math.floor((sec % 3600) / 60)).padStart(2, "0")}m`;
+const clock = (sec) => {
+  const p = (x) => String(x).padStart(2, "0");
+  const h = Math.floor(sec / 3600);
+  return h ? `${h}:${p(Math.floor((sec % 3600) / 60))}:${p(sec % 60)}` : `${p(Math.floor(sec / 60))}:${p(sec % 60)}`;
+};
+
+function bestSets(hist) {
+  const map = {};
+  hist.forEach((w) =>
+    w.ex.forEach((e) =>
+      e.sets.forEach((s) => {
+        if (!s.done || num(s.weight) <= 0) return;
+        const c = map[e.n];
+        if (!c || e1rm(s.weight, s.reps) > e1rm(c.weight, c.reps))
+          map[e.n] = { weight: num(s.weight), reps: num(s.reps), date: w.date, muscle: e.m };
+      })
+    )
+  );
+  return map;
+}
+function prsFor(sess, prior) {
+  const best = bestSets(prior);
+  const hit = [];
+  sess.ex.forEach((e) => {
+    let b = null;
+    e.sets.forEach((s) => {
+      if (s.done && num(s.weight) > 0 && (!b || e1rm(s.weight, s.reps) > e1rm(b.weight, b.reps))) b = s;
+    });
+    if (!b) return;
+    const p = best[e.n];
+    if (!p || e1rm(b.weight, b.reps) > e1rm(p.weight, p.reps)) hit.push(e.n);
+  });
+  return hit;
+}
+function streakOf(hist) {
+  const d = [...new Set(hist.map((w) => w.date))].sort().reverse();
+  if (!d.length || between(d[0], todayISO()) > 2) return 0;
+  let n = 1;
+  for (let i = 1; i < d.length; i++) {
+    if (between(d[i], d[i - 1]) <= 2) n++;
+    else break;
+  }
+  return n;
+}
+function buildLog(plan, history, checkins) {
+  const L = [];
+  const last = checkins.length ? checkins[checkins.length - 1] : null;
+  L.push(`TRAINING LOG — ${fmtLong(todayISO())}`);
+  L.push(`Bodyweight: ${last ? last.w + " kg" : "not logged"}${last && last.waist ? ` · waist ${last.waist} cm` : ""}`);
+  L.push("");
+  L.push("CURRENT PLAN");
+  plan.forEach((d) => {
+    L.push(`  ${d.name}${d.note ? " — " + d.note : ""}`);
+    d.ex.forEach((e) => L.push(`    ${e.n} (${e.m}) — ${e.sets} × ${e.reps}`));
+  });
+  L.push("");
+  L.push("CHECK-INS");
+  if (!checkins.length) L.push("  none yet");
+  [...checkins].reverse().forEach((c) => L.push(`  ${fmtShort(c.d)} — ${c.w} kg${c.waist ? ` · waist ${c.waist} cm` : ""}`));
+  L.push("");
+  const sm = {};
+  history
+    .filter((w) => between(w.date, todayISO()) < 7)
+    .forEach((w) => w.ex.forEach((e) => (sm[e.m] = (sm[e.m] || 0) + e.sets.length)));
+  L.push("SETS BY MUSCLE — LAST 7 DAYS");
+  const smk = Object.keys(sm).sort((a, b) => sm[b] - sm[a]);
+  if (!smk.length) L.push("  nothing logged");
+  smk.forEach((k) => L.push(`  ${k}: ${sm[k]}`));
+  L.push("");
+  L.push(`SESSIONS (${history.length}, newest first)`);
+  if (!history.length) L.push("  none yet");
+  [...history]
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+    .forEach((w) => {
+      let n = 0;
+      w.ex.forEach((e) => (n += e.sets.length));
+      L.push("");
+      L.push(`  ${fmtShort(w.date)} — ${w.name} — ${durTxt(w.dur)} — ${n} sets`);
+      w.ex.forEach((e) =>
+        L.push(
+          `    ${e.n}: ${e.sets.map((s) => `${num(s.weight)}x${num(s.reps)}`).join(", ")}${
+            (w.prs || []).includes(e.n) ? "  [PR]" : ""
+          }`
+        )
+      );
+    });
+  L.push("");
+  L.push("BEST SETS");
+  const b = bestSets(history);
+  const bk = Object.keys(b).sort((x, y) => e1rm(b[y].weight, b[y].reps) - e1rm(b[x].weight, b[x].reps));
+  if (!bk.length) L.push("  none yet");
+  bk.forEach((k) => L.push(`  ${k}: ${b[k].weight} kg × ${b[k].reps} (${fmtShort(b[k].date)})`));
+  return L.join("\n");
+}
+
+/* ---------------- primitives ---------------- */
+const Card = ({ children, style, ...p }) => (
+  <div {...p} style={{ background: K.card, border: `1px solid ${K.line}`, borderRadius: 10, ...style }}>
+    {children}
+  </div>
+);
+const Label = ({ children, note }) => (
+  <div style={{ margin: "26px 0 10px" }}>
+    <div style={{ fontSize: 12, color: K.mute, letterSpacing: ".1em", textTransform: "uppercase" }}>{children}</div>
+    {note && <div style={{ fontSize: 13, color: K.faint, marginTop: 3 }}>{note}</div>}
+  </div>
+);
+const inputStyle = {
+  background: K.card2,
+  border: `1px solid ${K.line}`,
+  color: K.text,
+  borderRadius: 7,
+  padding: "8px 10px",
+  fontFamily: FONT,
+  fontSize: 15,
+  width: "100%",
+};
+const btn = (variant) => ({
+  padding: "11px 14px",
+  borderRadius: 8,
+  fontSize: 15,
+  fontWeight: 600,
+  width: "100%",
+  border: variant === "solid" ? "none" : `1px solid ${K.line}`,
+  background: variant === "solid" ? K.on : "transparent",
+  color: variant === "solid" ? "#000" : K.text,
+});
+const iconBtn = {
+  width: 32,
+  height: 32,
+  borderRadius: 7,
+  border: `1px solid ${K.line}`,
+  color: K.mute,
+  fontSize: 14,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flex: "0 0 auto",
+};
+
+/* ---------------- app ---------------- */
+const SKEY = "trainer:v1";
+
+export default function App() {
+  const [tab, setTab] = useState("train");
+  const [plan, setPlan] = useState(DEFAULT_PLAN);
+  const [history, setHistory] = useState([]);
+  const [checkins, setCheckins] = useState([]);
+  const [active, setActive] = useState(null);
+  const [startedAt, setStartedAt] = useState(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const timer = useRef(null);
+
+  useEffect(() => {
+    let ok = true;
+    (async () => {
+      try {
+        const r = await window.storage.get(SKEY);
+        const d = r ? JSON.parse(r.value) : null;
+        if (ok && d) {
+          if (d.plan) setPlan(d.plan);
+          setHistory(d.history || []);
+          setCheckins(d.checkins || []);
+          if (d.active) {
+            setActive(d.active);
+            setStartedAt(d.startedAt || Date.now());
+          }
+        }
+      } catch (e) {}
+      if (ok) setLoaded(true);
+    })();
+    return () => {
+      ok = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    (async () => {
+      try {
+        await window.storage.set(SKEY, JSON.stringify({ plan, history, checkins, active, startedAt }));
+      } catch (e) {}
+    })();
+  }, [plan, history, checkins, active, startedAt, loaded]);
+
+  useEffect(() => {
+    if (!active || !startedAt) return;
+    setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    timer.current = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(timer.current);
+  }, [active, startedAt]);
+
+  const sorted = [...history].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const records = bestSets(history);
+
+  const prevRef = (name, i) => {
+    for (const w of sorted) {
+      const e = w.ex.find((x) => x.n === name);
+      if (e && e.sets[i] && num(e.sets[i].weight) > 0) return `${num(e.sets[i].weight)}×${num(e.sets[i].reps)}`;
+    }
+    return "—";
+  };
+
+  function start(day) {
+    setStartedAt(Date.now());
+    setActive({
+      dayId: day.id,
+      name: day.name,
+      date: todayISO(),
+      warm: WARMUP.map(() => false),
+      cool: COOLDOWN.map(() => false),
+      ex: day.ex.map((e) => ({
+        n: e.n,
+        m: e.m,
+        target: `${e.sets} × ${e.reps}`,
+        sets: Array.from({ length: e.sets }, () => ({ weight: "", reps: "", done: false })),
+      })),
+    });
+    setTab("train");
+  }
+  function finish() {
+    const done = active.ex
+      .map((e) => ({ n: e.n, m: e.m, sets: e.sets.filter((s) => s.done) }))
+      .filter((e) => e.sets.length);
+    if (!done.length) return;
+    const sess = {
+      id: uid(),
+      name: active.name,
+      date: active.date,
+      dur: Math.max(elapsed, 60),
+      ex: done,
+    };
+    sess.prs = prsFor(sess, history);
+    setHistory((h) => [...h, sess]);
+    setActive(null);
+    setStartedAt(null);
+    setTab("history");
+  }
+
+  return (
+    <div style={{ background: K.bg, color: K.text, fontFamily: FONT, minHeight: "100vh" }}>
+      <style>{`
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        input::placeholder { color: ${K.faint}; }
+        input:focus, textarea:focus { outline: 1px solid ${K.mute}; outline-offset: -1px; }
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        button { font-family: ${FONT}; cursor: pointer; }
+      `}</style>
+
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 14px 96px" }}>
+        <Header plan={plan} checkins={checkins} />
+        {tab === "train" && (
+          <Train
+            plan={plan}
+            history={history}
+            active={active}
+            elapsed={elapsed}
+            prevRef={prevRef}
+            setActive={setActive}
+            start={start}
+            finish={finish}
+            discard={() => {
+              setActive(null);
+              setStartedAt(null);
+            }}
+          />
+        )}
+        {tab === "plan" && <PlanTab plan={plan} setPlan={setPlan} />}
+        {tab === "history" && <HistoryTab list={sorted} />}
+        {tab === "progress" && (
+          <ProgressTab
+            history={history}
+            records={records}
+            checkins={checkins}
+            setCheckins={setCheckins}
+            logText={buildLog(plan, history, checkins)}
+          />
+        )}
+      </div>
+
+      <Nav tab={tab} setTab={setTab} live={!!active} />
+    </div>
+  );
+}
+
+/* ---------------- header ---------------- */
+function Header({ plan, checkins }) {
+  const last = checkins.length ? checkins[checkins.length - 1] : null;
+  return (
+    <div style={{ padding: "20px 0 14px", borderBottom: `1px solid ${K.line}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-0.01em" }}>Trainer</div>
+        <div style={{ fontSize: 14, color: K.mute }}>
+          {last ? `${last.w} kg${last.waist ? ` · ${last.waist} cm` : ""}` : "no check-in yet"}
+        </div>
+      </div>
+      <div style={{ fontSize: 13, color: K.faint, marginTop: 2 }}>
+        {plan.length} training days · lats and rear delts are the priority
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- train ---------------- */
+function Train({ plan, history, active, elapsed, prevRef, setActive, start, finish, discard }) {
+  const [confirm, setConfirm] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const [q, setQ] = useState("");
+
+  if (active) {
+    const upd = (fn) => setActive((a) => fn(JSON.parse(JSON.stringify(a))));
+    let done = 0,
+      all = 0;
+    active.ex.forEach((e) => {
+      all += e.sets.length;
+      e.sets.forEach((s) => s.done && done++);
+    });
+
+    return (
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 18 }}>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{active.name}</div>
+            <div style={{ fontSize: 13, color: K.mute }}>{fmtLong(active.date)}</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 24, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{clock(elapsed)}</div>
+            <div style={{ fontSize: 13, color: K.mute }}>
+              {done}/{all} sets
+            </div>
+          </div>
+        </div>
+
+        <Check
+          title="Warm-up"
+          items={WARMUP}
+          state={active.warm}
+          onToggle={(i) => upd((a) => ((a.warm[i] = !a.warm[i]), a))}
+        />
+
+        {active.ex.map((e, ei) => (
+          <Card key={ei} style={{ marginTop: 10, padding: 0, overflow: "hidden" }}>
+            <div
+              style={{
+                padding: "10px 12px",
+                borderBottom: `1px solid ${K.line}`,
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>{e.n}</div>
+                <div style={{ fontSize: 13, color: K.mute }}>
+                  {e.m} · {e.target}
+                </div>
+              </div>
+              <button
+                onClick={() => upd((a) => (a.ex.splice(ei, 1), a))}
+                style={{ ...iconBtn, background: "none" }}
+                aria-label="Remove exercise"
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: "8px 12px 10px" }}>
+              <Grid head />
+              {e.sets.map((s, si) => (
+                <Grid
+                  key={si}
+                  n={si + 1}
+                  prev={prevRef(e.n, si)}
+                  s={s}
+                  onW={(v) => upd((a) => ((a.ex[ei].sets[si].weight = v), a))}
+                  onR={(v) => upd((a) => ((a.ex[ei].sets[si].reps = v), a))}
+                  onTick={() => upd((a) => ((a.ex[ei].sets[si].done = !a.ex[ei].sets[si].done), a))}
+                />
+              ))}
+              <button
+                onClick={() => upd((a) => (a.ex[ei].sets.push({ weight: "", reps: "", done: false }), a))}
+                style={{
+                  ...btn(),
+                  marginTop: 8,
+                  padding: "7px",
+                  border: `1px dashed ${K.line}`,
+                  color: K.mute,
+                  fontWeight: 500,
+                }}
+              >
+                Add set
+              </button>
+            </div>
+          </Card>
+        ))}
+
+        {picker ? (
+          <Picker
+            q={q}
+            setQ={setQ}
+            onPick={(item) => {
+              upd((a) => (
+                a.ex.push({
+                  n: item.n,
+                  m: item.m,
+                  target: "3 × 8–12",
+                  sets: [
+                    { weight: "", reps: "", done: false },
+                    { weight: "", reps: "", done: false },
+                    { weight: "", reps: "", done: false },
+                  ],
+                }),
+                a
+              ));
+              setPicker(false);
+              setQ("");
+            }}
+            onClose={() => setPicker(false)}
+          />
+        ) : (
+          <button onClick={() => setPicker(true)} style={{ ...btn(), marginTop: 10 }}>
+            Add exercise to this session
+          </button>
+        )}
+
+        <Check
+          title="Cool-down"
+          items={COOLDOWN}
+          state={active.cool}
+          onToggle={(i) => upd((a) => ((a.cool[i] = !a.cool[i]), a))}
+        />
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 18 }}>
+          <button
+            onClick={finish}
+            disabled={!done}
+            style={{ ...btn("solid"), opacity: done ? 1 : 0.35 }}
+          >
+            Finish
+          </button>
+          <button
+            onClick={() => (confirm ? discard() : setConfirm(true))}
+            style={{ ...btn(), color: confirm ? K.text : K.mute }}
+          >
+            {confirm ? "Tap again to discard" : "Discard"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const week = history.filter((w) => between(w.date, todayISO()) < 7).length;
+  const stats = [
+    [streakOf(history), "Streak"],
+    [week, "This week"],
+    [history.length, "Total"],
+  ];
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, paddingTop: 18 }}>
+        {stats.map((s) => (
+          <Card key={s[1]} style={{ padding: 12 }}>
+            <div style={{ fontSize: 26, fontWeight: 700 }}>{s[0]}</div>
+            <div style={{ fontSize: 12, color: K.mute, marginTop: 2 }}>{s[1]}</div>
+          </Card>
+        ))}
+      </div>
+
+      <Label note="Tap a day to start logging it.">Today</Label>
+      <div style={{ display: "grid", gap: 8 }}>
+        {plan.length === 0 && (
+          <Card style={{ padding: 14, fontSize: 14, color: K.mute }}>
+            No days yet. Add one on the Plan tab.
+          </Card>
+        )}
+        {plan.map((d) => (
+          <button
+            key={d.id}
+            onClick={() => start(d)}
+            style={{
+              background: K.card,
+              border: `1px solid ${K.line}`,
+              borderRadius: 10,
+              padding: 14,
+              textAlign: "left",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10,
+              color: K.text,
+            }}
+          >
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 16, fontWeight: 600 }}>{d.name}</span>
+              <span style={{ display: "block", fontSize: 13, color: K.mute }}>
+                {d.note ? d.note + " · " : ""}
+                {d.ex.length} exercises
+              </span>
+            </span>
+            <span style={{ color: K.mute, fontSize: 18 }}>›</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Grid({ head, n, prev, s, onW, onR, onTick }) {
+  const cols = { display: "grid", gridTemplateColumns: "22px 1fr 1fr 1fr 36px", gap: 8, alignItems: "center" };
+  if (head)
+    return (
+      <div style={{ ...cols, fontSize: 11, color: K.mute, textTransform: "uppercase", letterSpacing: ".08em", paddingBottom: 4 }}>
+        <div>#</div>
+        <div>Prev</div>
+        <div>Kg</div>
+        <div>Reps</div>
+        <div />
+      </div>
+    );
+  return (
+    <div style={{ ...cols, padding: "3px 0" }}>
+      <div style={{ fontSize: 14, color: s.done ? K.text : K.mute, fontWeight: 600 }}>{n}</div>
+      <div style={{ fontSize: 13, color: K.faint }}>{prev}</div>
+      <input type="number" inputMode="decimal" placeholder="—" value={s.weight} onChange={(e) => onW(e.target.value)} style={inputStyle} />
+      <input type="number" inputMode="numeric" placeholder="—" value={s.reps} onChange={(e) => onR(e.target.value)} style={inputStyle} />
+      <button
+        onClick={onTick}
+        aria-label={`Complete set ${n}`}
+        style={{
+          ...iconBtn,
+          marginLeft: "auto",
+          background: s.done ? K.on : "transparent",
+          borderColor: s.done ? K.on : K.line,
+          color: s.done ? "#000" : K.faint,
+          fontWeight: 700,
+        }}
+      >
+        ✓
+      </button>
+    </div>
+  );
+}
+
+function Check({ title, items, state, onToggle }) {
+  return (
+    <Card style={{ padding: 12, marginTop: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <div style={{ fontSize: 15, fontWeight: 600 }}>{title}</div>
+        <div style={{ fontSize: 13, color: K.mute }}>
+          {state.filter(Boolean).length}/{items.length}
+        </div>
+      </div>
+      {items.map((t, i) => (
+        <button
+          key={t}
+          onClick={() => onToggle(i)}
+          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "6px 0", background: "none", border: "none" }}
+        >
+          <span
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: 5,
+              flex: "0 0 auto",
+              border: `1px solid ${state[i] ? K.on : K.line}`,
+              background: state[i] ? K.on : "transparent",
+              color: "#000",
+              fontSize: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {state[i] ? "✓" : ""}
+          </span>
+          <span style={{ fontSize: 14, color: state[i] ? K.faint : K.text }}>{t}</span>
+        </button>
+      ))}
+    </Card>
+  );
+}
+
+function Picker({ q, setQ, onPick, onClose, allowCustom }) {
+  const [group, setGroup] = useState(GROUPS[0]);
+  const items = LIB.filter((i) => (i.n + " " + i.m).toLowerCase().includes(q.toLowerCase()));
+  return (
+    <Card style={{ marginTop: 10, padding: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ fontSize: 15, fontWeight: 600 }}>Add exercise</div>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: K.mute, fontSize: 14 }}>
+          Close
+        </button>
+      </div>
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search or type a new name" style={inputStyle} />
+      {allowCustom && q.trim() && !items.some((i) => i.n.toLowerCase() === q.trim().toLowerCase()) && (
+        <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+          <select value={group} onChange={(e) => setGroup(e.target.value)} style={{ ...inputStyle, width: "auto", flex: 1 }}>
+            {GROUPS.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+          <button onClick={() => onPick({ n: q.trim(), m: group })} style={{ ...btn("solid"), width: "auto", padding: "8px 14px" }}>
+            Add "{q.trim()}"
+          </button>
+        </div>
+      )}
+      <div style={{ maxHeight: 280, overflowY: "auto", marginTop: 6 }}>
+        {items.map((i) => (
+          <button
+            key={i.n}
+            onClick={() => onPick(i)}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              width: "100%",
+              textAlign: "left",
+              padding: "9px 0",
+              borderBottom: `1px solid ${K.line}`,
+              background: "none",
+              border: "none",
+              borderBottomWidth: 1,
+              borderBottomStyle: "solid",
+              borderBottomColor: K.line,
+              color: K.text,
+              fontSize: 15,
+            }}
+          >
+            <span>{i.n}</span>
+            <span style={{ color: K.faint, fontSize: 13 }}>{i.m}</span>
+          </button>
+        ))}
+        {!items.length && <div style={{ fontSize: 14, color: K.mute, padding: "14px 0" }}>No match — type a name to add it.</div>}
+      </div>
+    </Card>
+  );
+}
+
+/* ---------------- plan editor ---------------- */
+function PlanTab({ plan, setPlan }) {
+  const [openId, setOpenId] = useState(null);
+  const [picking, setPicking] = useState(null);
+  const [q, setQ] = useState("");
+
+  const edit = (fn) => setPlan((p) => fn(JSON.parse(JSON.stringify(p))));
+  const move = (arr, i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return arr;
+    const [x] = arr.splice(i, 1);
+    arr.splice(j, 0, x);
+    return arr;
+  };
+
+  return (
+    <div>
+      <Label note="Rename days, reorder them, add or delete exercises. Changes apply the next time you start that day.">
+        Your plan
+      </Label>
+
+      {plan.map((d, di) => {
+        const open = openId === d.id;
+        return (
+          <Card key={d.id} style={{ marginBottom: 8, padding: 12 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                value={d.name}
+                onChange={(e) => edit((p) => ((p[di].name = e.target.value), p))}
+                style={{ ...inputStyle, fontWeight: 600 }}
+              />
+              <button onClick={() => edit((p) => move(p, di, -1))} style={iconBtn} aria-label="Move up">
+                ↑
+              </button>
+              <button onClick={() => edit((p) => move(p, di, 1))} style={iconBtn} aria-label="Move down">
+                ↓
+              </button>
+            </div>
+            <input
+              value={d.note || ""}
+              onChange={(e) => edit((p) => ((p[di].note = e.target.value), p))}
+              placeholder="Short note (optional)"
+              style={{ ...inputStyle, marginTop: 6, fontSize: 13, color: K.mute }}
+            />
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <button
+                onClick={() => setOpenId(open ? null : d.id)}
+                style={{ background: "none", border: "none", color: K.text, fontSize: 14, padding: 0 }}
+              >
+                {open ? "Hide" : "Edit"} {d.ex.length} exercises
+              </button>
+              <button
+                onClick={() => edit((p) => (p.splice(di, 1), p))}
+                style={{ background: "none", border: "none", color: K.mute, fontSize: 13 }}
+              >
+                Delete day
+              </button>
+            </div>
+
+            {open && (
+              <div style={{ marginTop: 10, borderTop: `1px solid ${K.line}`, paddingTop: 10 }}>
+                {d.ex.map((e, ei) => (
+                  <div key={e.id} style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 500 }}>{e.n}</div>
+                        <div style={{ fontSize: 12, color: K.faint }}>{e.m}</div>
+                      </div>
+                      <button onClick={() => edit((p) => (move(p[di].ex, ei, -1), p))} style={iconBtn} aria-label="Move up">
+                        ↑
+                      </button>
+                      <button onClick={() => edit((p) => (move(p[di].ex, ei, 1), p))} style={iconBtn} aria-label="Move down">
+                        ↓
+                      </button>
+                      <button
+                        onClick={() => edit((p) => (p[di].ex.splice(ei, 1), p))}
+                        style={iconBtn}
+                        aria-label="Remove exercise"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 8, marginTop: 6 }}>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={e.sets}
+                        onChange={(ev) => edit((p) => ((p[di].ex[ei].sets = Math.max(1, num(ev.target.value) || 1)), p))}
+                        style={inputStyle}
+                      />
+                      <input
+                        value={e.reps}
+                        onChange={(ev) => edit((p) => ((p[di].ex[ei].reps = ev.target.value), p))}
+                        placeholder="reps, e.g. 8–10"
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                {picking === d.id ? (
+                  <Picker
+                    q={q}
+                    setQ={setQ}
+                    allowCustom
+                    onPick={(item) => {
+                      edit((p) => (p[di].ex.push({ id: uid(), n: item.n, m: item.m, sets: 3, reps: "8–12" }), p));
+                      setPicking(null);
+                      setQ("");
+                    }}
+                    onClose={() => setPicking(null)}
+                  />
+                ) : (
+                  <button onClick={() => setPicking(d.id)} style={{ ...btn(), marginTop: 4 }}>
+                    Add exercise
+                  </button>
+                )}
+              </div>
+            )}
+          </Card>
+        );
+      })}
+
+      <button
+        onClick={() => setPlan((p) => [...p, { id: uid(), name: "New day", note: "", ex: [] }])}
+        style={{ ...btn("solid"), marginTop: 10 }}
+      >
+        Add a day
+      </button>
+    </div>
+  );
+}
+
+/* ---------------- history ---------------- */
+function HistoryTab({ list }) {
+  if (!list.length)
+    return (
+      <div style={{ paddingTop: 60, textAlign: "center" }}>
+        <div style={{ fontSize: 17, fontWeight: 600 }}>No sessions yet</div>
+        <div style={{ fontSize: 14, color: K.mute, marginTop: 6 }}>Finished workouts appear here.</div>
+      </div>
+    );
+  return (
+    <div>
+      <Label>{list.length} sessions</Label>
+      <div style={{ display: "grid", gap: 8 }}>
+        {list.map((w) => {
+          let n = 0;
+          w.ex.forEach((e) => (n += e.sets.length));
+          return (
+            <Card key={w.id} style={{ padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>{w.name}</div>
+                <div style={{ fontSize: 13, color: K.mute }}>{fmtShort(w.date)}</div>
+              </div>
+              <div style={{ fontSize: 13, color: K.mute, marginBottom: 8 }}>
+                {durTxt(w.dur)} · {n} sets · {w.ex.length} exercises
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {w.ex.map((e) => (
+                  <span
+                    key={e.n}
+                    style={{
+                      fontSize: 12,
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      background: K.card2,
+                      border: `1px solid ${K.line}`,
+                      color: (w.prs || []).includes(e.n) ? K.text : K.mute,
+                      fontWeight: (w.prs || []).includes(e.n) ? 600 : 400,
+                    }}
+                  >
+                    {(w.prs || []).includes(e.n) ? "★ " : ""}
+                    {e.n}
+                  </span>
+                ))}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- progress ---------------- */
+function ProgressTab({ history, records, checkins, setCheckins, logText }) {
+  const [w, setW] = useState("");
+  const [waist, setWaist] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [showText, setShowText] = useState(false);
+
+  const save = () => {
+    if (!num(w)) return;
+    const t = todayISO();
+    setCheckins((c) =>
+      [...c.filter((x) => x.d !== t), { d: t, w: num(w), waist: waist === "" ? null : num(waist) }].sort((a, b) =>
+        a.d < b.d ? -1 : 1
+      )
+    );
+    setW("");
+    setWaist("");
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(logText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch (e) {
+      setShowText(true);
+    }
+  };
+
+  const sets = {};
+  history
+    .filter((x) => between(x.date, todayISO()) < 7)
+    .forEach((x) => x.ex.forEach((e) => (sets[e.m] = (sets[e.m] || 0) + e.sets.length)));
+  const rows = Object.keys(sets).sort((a, b) => sets[b] - sets[a]);
+  const max = rows.length ? sets[rows[0]] : 1;
+
+  const top = Object.keys(records)
+    .map((n) => ({ n, ...records[n] }))
+    .sort((a, b) => e1rm(b.weight, b.reps) - e1rm(a.weight, a.reps))
+    .slice(0, 5);
+
+  return (
+    <div>
+      <Label note="Waist at navel level, same time of day as the scale.">Check-in</Label>
+      <Card style={{ padding: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <input type="number" inputMode="decimal" placeholder="Weight kg" value={w} onChange={(e) => setW(e.target.value)} style={inputStyle} />
+          <input type="number" inputMode="decimal" placeholder="Waist cm" value={waist} onChange={(e) => setWaist(e.target.value)} style={inputStyle} />
+        </div>
+        <button onClick={save} style={{ ...btn("solid"), marginTop: 8, opacity: num(w) ? 1 : 0.35 }}>
+          Save check-in
+        </button>
+        {checkins
+          .slice()
+          .reverse()
+          .slice(0, 6)
+          .map((c) => (
+            <div key={c.d} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "6px 0", borderTop: `1px solid ${K.line}`, color: K.mute }}>
+              <span>{fmtShort(c.d)}</span>
+              <span style={{ color: K.text }}>
+                {c.w} kg{c.waist ? ` · ${c.waist} cm` : ""}
+              </span>
+            </div>
+          ))}
+      </Card>
+
+      <Label note="Lats, Back and Rear Delts should out-total your pressing every week.">Sets by muscle, last 7 days</Label>
+      <Card style={{ padding: 12 }}>
+        {!rows.length && <div style={{ fontSize: 14, color: K.mute }}>Nothing logged in the last seven days.</div>}
+        {rows.map((m) => (
+          <div key={m} style={{ marginBottom: 9 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+              <span>{m}</span>
+              <span style={{ color: K.mute }}>{sets[m]}</span>
+            </div>
+            <div style={{ background: K.card2, height: 6, borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ width: `${(sets[m] / max) * 100}%`, height: "100%", background: K.on, opacity: 0.85 }} />
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      <Label>Best sets</Label>
+      <Card style={{ padding: 12 }}>
+        {!top.length && <div style={{ fontSize: 14, color: K.mute }}>Log a session and your records show up here.</div>}
+        {top.map((p, i) => (
+          <div
+            key={p.n}
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "7px 0", borderTop: i ? `1px solid ${K.line}` : "none" }}
+          >
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 15 }}>{p.n}</span>
+              <span style={{ display: "block", fontSize: 12, color: K.faint }}>{fmtShort(p.date)}</span>
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 600 }}>
+              {p.weight} × {p.reps}
+            </span>
+          </div>
+        ))}
+      </Card>
+
+      <Label note="Paste into your training doc so nothing is lost.">Export</Label>
+      <Card style={{ padding: 12 }}>
+        <button onClick={copy} style={btn()}>
+          {copied ? "Copied" : "Copy full log"}
+        </button>
+        <button onClick={() => setShowText((v) => !v)} style={{ ...btn(), border: "none", color: K.mute, marginTop: 6 }}>
+          {showText ? "Hide text" : "Show text instead"}
+        </button>
+        {showText && (
+          <textarea
+            readOnly
+            value={logText}
+            onFocus={(e) => e.target.select()}
+            style={{ ...inputStyle, height: 200, marginTop: 8, fontSize: 12, whiteSpace: "pre", fontFamily: "ui-monospace, Menlo, monospace" }}
+          />
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/* ---------------- nav ---------------- */
+function Nav({ tab, setTab, live }) {
+  const items = [
+    ["train", "Train"],
+    ["plan", "Plan"],
+    ["history", "History"],
+    ["progress", "Progress"],
+  ];
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "#0E0E10",
+        borderTop: `1px solid ${K.line}`,
+        zIndex: 40,
+      }}
+    >
+      <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)" }}>
+        {items.map(([k, l]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            style={{
+              padding: "14px 0",
+              background: "none",
+              border: "none",
+              color: tab === k ? K.text : K.faint,
+              fontSize: 13,
+              fontWeight: tab === k ? 600 : 400,
+              position: "relative",
+            }}
+          >
+            {l}
+            {k === "train" && live && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: "26%",
+                  width: 5,
+                  height: 5,
+                  borderRadius: 99,
+                  background: K.on,
+                }}
+              />
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
